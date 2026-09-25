@@ -124,7 +124,7 @@ struct TabBar: View {
                             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                             .background(
                                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                    .fill(plussed ? Palette.hover : .clear)
+                                    .fill(plussed ? SideBar.hoverFill : .clear)
                             )
                     }
                     .buttonStyle(.plain)
@@ -173,7 +173,14 @@ struct TabBar: View {
         .onDrop(of: [.url, .text], isTargeted: $landing) { providers in
             browser.take(providers)
         }
-        .background(landing ? Palette.hover : .clear)
+        // The Mac's sidebar material, as the column has it (Frosted).
+        .background {
+            if browser.prefs.frostedSidebar {
+                Frosted().overlay { if landing { SideBar.hoverFill } }
+            } else {
+                landing ? Palette.hover : Color.clear
+            }
+        }
         .animation(Motion.quick, value: landing)
         .animation(browser.prefs.slidesHighlight ? Motion.glide : nil, value: browser.activeID)
         // The row makes room for the field on the same spring as everything

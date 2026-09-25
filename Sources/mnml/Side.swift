@@ -63,11 +63,32 @@ struct SideBar: View {
     // The column's highlights: the ink, see-through, rather than a grey of
     // their own, so they lighten a group's colour as they do the column —
     // a flat grey all but vanished over a group, and in the dark.
-    static let liveFill = Palette.ink.opacity(0.10)
-    static let hoverFill = Palette.ink.opacity(0.06)
-    static let pinFill = Palette.ink.opacity(0.07)
-    static let pinHoverFill = Palette.ink.opacity(0.10)
-    static let pinLiveFill = Palette.ink.opacity(0.15)
+    //
+    // Over the Mac's material in light mode — a mid grey where a dark desktop
+    // shows through — the ink all but vanished: there it is stronger. The
+    // flat colours made for a white column (Palette.hover, .faint, .wash)
+    // are solid, and over the material stood out as white blocks or went
+    // unseen; in the column and the strip these stand in for them.
+    static var liveFill: Color { fill(0.10, light: 0.14) }
+    static var hoverFill: Color { fill(0.06, light: 0.07) }
+    static var pinFill: Color { fill(0.07, light: 0.08) }
+    static var pinHoverFill: Color { fill(0.10, light: 0.12) }
+    static var pinLiveFill: Color { fill(0.15, light: 0.18) }
+    /// Quiet text, as New tab's.
+    static var faintText: Color { frosted ? Palette.ink.opacity(0.42) : Palette.faint }
+
+    /// Whether the column and the strip wear the Mac's material (Settings ›
+    /// Tabs), kept here by Preferences for the fills to ask.
+    static var frosted = true
+
+    private static func fill(_ ink: Double, light: Double) -> Color {
+        guard frosted else { return Palette.ink.opacity(ink) }
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor.white.withAlphaComponent(ink)
+                : NSColor.black.withAlphaComponent(light)
+        })
+    }
     /// The narrowest a pinned square gets before a row takes one fewer.
     private static let pinCell: CGFloat = 34
 
@@ -133,7 +154,14 @@ struct SideBar: View {
         // Rows on their way to or from another space stay in the column.
         .clipped()
         .onAppear { SpaceSwipe.shared.start(for: browser) }
-        .background(landing ? Palette.hover : Palette.ground)
+        .background {
+            if prefs.frostedSidebar {
+                Frosted()
+                    .overlay { if landing { SideBar.hoverFill } }
+            } else {
+                landing ? Palette.hover : Palette.ground
+            }
+        }
         .overlay(alignment: .trailing) {
             Rectangle().fill(Palette.hairline).frame(width: 1)
         }
@@ -1018,7 +1046,7 @@ struct SideRow: View {
                     .padding(.horizontal, 3)
                     .background(
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(homeHover ? Palette.hover : .clear)
+                            .fill(homeHover ? SideBar.hoverFill : .clear)
                             .padding(.vertical, -3)
                     )
                     .padding(.horizontal, -3)
@@ -1209,13 +1237,13 @@ struct Quiet: View {
                     .font(.system(size: 12.5))
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(hovering ? Palette.ink.opacity(0.7) : Palette.faint)
+            .foregroundStyle(hovering ? Palette.ink.opacity(0.7) : SideBar.faintText)
             .padding(.leading, 10)
             .frame(height: height)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(hovering ? Palette.hover : .clear)
+                    .fill(hovering ? SideBar.hoverFill : .clear)
             )
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
@@ -1267,7 +1295,7 @@ struct Door: View {
                 .frame(width: 26, height: 26)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(on ? Palette.wash : (hovering ? Palette.hover : .clear))
+                        .fill(on ? SideBar.liveFill : (hovering ? SideBar.hoverFill : .clear))
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }

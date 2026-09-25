@@ -110,6 +110,15 @@ final class Preferences: ObservableObject {
     @Published var mruSwitcher: Bool {
         didSet { store.set(mruSwitcher, forKey: "tabs.mru") }
     }
+    /// The column in the Mac's own sidebar material — the desktop behind it
+    /// showing through, blurred, as in Finder — rather than a flat colour.
+    @Published var frostedSidebar: Bool {
+        didSet {
+            store.set(frostedSidebar, forKey: "tabs.frosted")
+            SideBar.frosted = frostedSidebar
+        }
+    }
+
     /// The highlight glides from the tab left to the one chosen; off, it is
     /// simply there.
     @Published var slidesHighlight: Bool {
@@ -286,6 +295,9 @@ final class Preferences: ObservableObject {
         dragHaptics = store.object(forKey: "tabs.dragHaptics") as? Bool ?? true
         showsReading = store.object(forKey: "tabs.reading") as? Bool ?? true
         slidesHighlight = store.object(forKey: "tabs.slide") as? Bool ?? true
+        let frosted = store.object(forKey: "tabs.frosted") as? Bool ?? true
+        frostedSidebar = frosted
+        SideBar.frosted = frosted
         shielded = store.object(forKey: "shield") as? Bool ?? true
         extensionsInPrivate = store.bool(forKey: "extensions.private")
         // Offered by default only in a build that can actually do them —

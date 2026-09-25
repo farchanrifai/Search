@@ -239,7 +239,7 @@ struct SpaceName: View {
             }
             .padding(.horizontal, 8)
             .frame(height: 26)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hovering ? Palette.hover : .clear))
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hovering ? SideBar.hoverFill : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

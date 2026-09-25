@@ -322,7 +322,7 @@ struct SpaceDot: View {
             .clipped()
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(hovering ? Palette.hover : .clear)
+                    .fill(hovering ? SideBar.hoverFill : .clear)
             )
             .contentShape(Rectangle())
         }

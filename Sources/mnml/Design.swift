@@ -204,3 +204,22 @@ struct Shake: GeometryEffect {
         )
     }
 }
+
+/// The Mac's own sidebar material: what is behind the window, blurred and
+/// tinted for light or dark, and dimmed when the window isn't in front — as
+/// Finder's, Mail's and Notes' sidebars are.
+struct Frosted: NSViewRepresentable {
+    var material: NSVisualEffectView.Material = .sidebar
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = .behindWindow
+        view.state = .followsWindowActiveState
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {
+        view.material = material
+    }
+}

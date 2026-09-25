@@ -156,7 +156,7 @@ struct GroupBlock<Row: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(hovering && !washed ? Palette.hover : .clear)
+                .fill(hovering && !washed ? SideBar.hoverFill : .clear)
         )
         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         // A click folds or opens it, every time, however fast — as in Dia.
