@@ -134,6 +134,9 @@ final class Float {
         holder.wantsLayer = true
         holder.setBoundsSize(inner)
         page.removeFromSuperview()
+        // Parked unseen a moment ago, waiting on macOS's picture-in-picture
+        // that then couldn't be had (StageView.park): seen here.
+        page.alphaValue = 1
         page.frame = NSRect(origin: .zero, size: inner)
         page.autoresizingMask = []
         holder.addSubview(page)

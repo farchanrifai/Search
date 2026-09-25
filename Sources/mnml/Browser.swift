@@ -1694,7 +1694,7 @@ final class Browser: NSObject, ObservableObject {
     /// existing because you went to look something up.
     private func leaving() {
         guard prefs.floatsOnLeave else { return }
-        lift(active, quietly: true)
+        lift(active, quietly: true, leavingTab: true)
     }
 
     /// Another app in front: the video comes along, as in Arc (Settings ›
@@ -1751,7 +1751,9 @@ final class Browser: NSObject, ObservableObject {
 
     /// Everything but the video goes out of the way, and the page it lives in
     /// moves house — into a small window that stays above everything.
-    private func lift(_ tab: Tab?, quietly: Bool) {
+    /// `leavingTab`: another tab is about to be shown. Otherwise the tab
+    /// stays the one on show — the app left, or ⌘⇧P — and its page stays put.
+    private func lift(_ tab: Tab?, quietly: Bool, leavingTab: Bool = false) {
         // A tab just put down with ⌘W has no page to lift a video out of, and
         // asking it would only build an empty view to ask.
         guard let tab, !tab.isBlank, !tab.asleep, !floater.showing else { return }
@@ -1766,17 +1768,21 @@ final class Browser: NSObject, ObservableObject {
         if tab.noisy {
             if SystemPiP.enter(tab.web) {
                 systemPiP = tab.id
-                StageView.park(tab.web, for: 1)
+                // Only when its tab is going: a tab still on show keeps its
+                // page — parked, then let go, it was left blank.
+                if leavingTab { StageView.park(tab.web, for: 1) }
                 return
             }
             // WebKit not ready to say it can: asked to look again, and tried
             // once more a moment later, the page kept in the window meanwhile.
             // Falling straight back to mnml's own window gave a different
             // window from one leave to the next.
-            StageView.park(tab.web, for: 1.3)
+            if leavingTab { StageView.park(tab.web, for: 1.3) }
             SystemPiP.prepare(tab.web)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self, weak tab] in
-                guard let self, let tab, self.activeID != tab.id, !self.floater.showing else { return }
+                // Still wanted: the tab not chosen again, or the app not back.
+                guard let self, let tab, !self.floater.showing,
+                      leavingTab ? self.activeID != tab.id : !NSApp.isActive else { return }
                 if SystemPiP.enter(tab.web) {
                     self.systemPiP = tab.id
                 } else {

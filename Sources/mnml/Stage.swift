@@ -225,6 +225,7 @@ final class StageView: NSView {
     /// Now there is one fact and one rule: show `wanted`, and put that right on
     /// every layout. Nothing to fall out of step with.
     private weak var wanted: NSView?
+    private var fullscreenWatch: NSKeyValueObservation?
 
     /// A page kept in the window, unseen, a moment after its tab was left:
     /// its video is on its way into macOS's picture-in-picture, and WebKit
@@ -244,6 +245,8 @@ final class StageView: NSView {
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
             // Taken back by a stage meanwhile — its tab chosen again — it stays.
             if page.superview === content { page.removeFromSuperview() }
+            // Unseen only while parked: wherever it goes next, it is seen.
+            if page.superview == nil { page.alphaValue = 1 }
         }
     }
 
@@ -292,6 +295,11 @@ final class StageView: NSView {
         // Another page: it has its own note to be told, wherever it lands.
         if wanted !== page { told = nil }
         wanted = page
+        // Out of full screen: looked at again, since nothing else may lay
+        // this stage out to notice the page is free to come back.
+        fullscreenWatch = (page as? WKWebView)?.observe(\.fullscreenState) { [weak self] _, _ in
+            DispatchQueue.main.async { self?.needsLayout = true }
+        }
         settle()
     }
 
@@ -301,7 +309,13 @@ final class StageView: NSView {
         // stepping aside lays this stage out again in that same moment, and
         // taking the page back then left the screen black with the sound
         // still playing. WebKit puts it back itself on the way out.
-        if let web = wanted as? WKWebView, web.fullscreenState != .notInFullscreen { return }
+        //
+        // Only when it really is in WebKit's window, though: a video coming
+        // back from picture-in-picture has the page say it is leaving full
+        // screen too, from nowhere or parked in this window, and waited for,
+        // the page never came back — the blank tab.
+        if let web = wanted as? WKWebView, web.fullscreenState != .notInFullscreen,
+           let there = web.window, there !== window { return }
 
         // Anything here that isn't wanted, out. Only ever what is actually
         // ours: a page may be somewhere else on purpose. Except the Web
