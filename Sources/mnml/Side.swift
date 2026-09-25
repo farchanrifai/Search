@@ -142,7 +142,7 @@ struct SideBar: View {
             browser.take(providers)
         }
         .animation(Motion.quick, value: landing)
-        .animation(Motion.glide, value: browser.activeID)
+        .animation(browser.prefs.slidesHighlight ? Motion.glide : nil, value: browser.activeID)
         .animation(Motion.glide, value: browser.editingTab)
         .animation(Motion.settle, value: browser.tabs.map(\.id))
         .animation(Motion.settle, value: browser.pinnedCount)

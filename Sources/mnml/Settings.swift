@@ -324,6 +324,10 @@ struct SettingsPanel: View {
                 Switch(on: $prefs.showsReading)
             }
             Rule()
+            Line("Slide the highlight between tabs", "The highlight glides to the tab you choose. Off, it moves at once") {
+                Switch(on: $prefs.slidesHighlight)
+            }
+            Rule()
             Line("Sleep tabs you aren't using", "After half an hour away, two hours for pinned tabs, and beyond the ten used last; a background page past 2 GB sleeps at once. They come back where you left them. Sound, calls and anything typed stay awake.") {
                 Switch(on: $prefs.sleepsTabs)
             }

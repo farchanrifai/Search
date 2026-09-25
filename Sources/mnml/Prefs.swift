@@ -110,6 +110,12 @@ final class Preferences: ObservableObject {
     @Published var mruSwitcher: Bool {
         didSet { store.set(mruSwitcher, forKey: "tabs.mru") }
     }
+    /// The highlight glides from the tab left to the one chosen; off, it is
+    /// simply there.
+    @Published var slidesHighlight: Bool {
+        didSet { store.set(slidesHighlight, forKey: "tabs.slide") }
+    }
+
     @Published var showsReading: Bool {
         didSet { store.set(showsReading, forKey: "tabs.reading") }
     }
@@ -279,6 +285,7 @@ final class Preferences: ObservableObject {
         groupsLinks = store.bool(forKey: "tabs.groupLinks")
         dragHaptics = store.object(forKey: "tabs.dragHaptics") as? Bool ?? true
         showsReading = store.object(forKey: "tabs.reading") as? Bool ?? true
+        slidesHighlight = store.object(forKey: "tabs.slide") as? Bool ?? true
         shielded = store.object(forKey: "shield") as? Bool ?? true
         extensionsInPrivate = store.bool(forKey: "extensions.private")
         // Offered by default only in a build that can actually do them —

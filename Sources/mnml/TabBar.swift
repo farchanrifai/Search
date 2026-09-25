@@ -175,7 +175,7 @@ struct TabBar: View {
         }
         .background(landing ? Palette.hover : .clear)
         .animation(Motion.quick, value: landing)
-        .animation(Motion.glide, value: browser.activeID)
+        .animation(browser.prefs.slidesHighlight ? Motion.glide : nil, value: browser.activeID)
         // The row makes room for the field on the same spring as everything
         // else. Without this the widths changed between one frame and the next
         // and the tabs appeared to jump aside.
