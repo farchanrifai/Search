@@ -210,16 +210,20 @@ struct Shake: GeometryEffect {
 /// Finder's, Mail's and Notes' sidebars are.
 struct Frosted: NSViewRepresentable {
     var material: NSVisualEffectView.Material = .sidebar
+    /// The desktop behind the window, or, with the page running under the
+    /// chrome (Under.swift), the page beneath it.
+    var blending: NSVisualEffectView.BlendingMode = .behindWindow
 
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = material
-        view.blendingMode = .behindWindow
+        view.blendingMode = blending
         view.state = .followsWindowActiveState
         return view
     }
 
     func updateNSView(_ view: NSVisualEffectView, context: Context) {
         view.material = material
+        view.blendingMode = blending
     }
 }

@@ -118,6 +118,12 @@ final class Preferences: ObservableObject {
             SideBar.frosted = frostedSidebar
         }
     }
+    /// The page runs on under the column and the strip, its colours seen
+    /// through their material, as in Safari (Under.swift). Off unless
+    /// turned on, and only ever with the material.
+    @Published var pageUnder: Bool {
+        didSet { store.set(pageUnder, forKey: "tabs.under") }
+    }
 
     /// The highlight glides from the tab left to the one chosen; off, it is
     /// simply there.
@@ -298,6 +304,7 @@ final class Preferences: ObservableObject {
         let frosted = store.object(forKey: "tabs.frosted") as? Bool ?? true
         frostedSidebar = frosted
         SideBar.frosted = frosted
+        pageUnder = store.bool(forKey: "tabs.under")
         shielded = store.object(forKey: "shield") as? Bool ?? true
         extensionsInPrivate = store.bool(forKey: "extensions.private")
         // Offered by default only in a build that can actually do them —

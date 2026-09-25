@@ -156,7 +156,7 @@ struct SideBar: View {
         .onAppear { SpaceSwipe.shared.start(for: browser) }
         .background {
             if prefs.frostedSidebar {
-                Frosted()
+                Frosted(blending: browser.pageUnder ? Under.blending : .behindWindow)
                     .overlay { if landing { SideBar.hoverFill } }
             } else {
                 landing ? Palette.hover : Palette.ground
