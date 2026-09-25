@@ -13,6 +13,10 @@ struct Page: View {
     @ObservedObject var tab: Tab
     /// Rounded, as each half of a split is (Split.swift).
     var corner: CGFloat = 0
+    /// How much of the page the column and the strip cover, with the page
+    /// running under them (Under.swift). What is said over the page stays
+    /// clear of them.
+    var under = EdgeInsets()
 
     var body: some View {
         ZStack {
@@ -23,7 +27,7 @@ struct Page: View {
             // before and after the float changes nothing SwiftUI can see, so
             // the stage was never told to take it back when it landed, and
             // the tab stayed empty. Nothing, then the page, is a change.
-            WebStage(page: tab.isBlank || tab.asleep || tab.floating ? nil : tab.web, corner: corner)
+            WebStage(page: tab.isBlank || tab.asleep || tab.floating ? nil : tab.web, corner: corner, under: under)
 
             if let cover = tab.cover {
                 // The page as it was left, while it is rebuilt underneath —
@@ -45,12 +49,15 @@ struct Page: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Palette.muted)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(under)
                     .background(Palette.ground)
                     .transition(.opacity)
             }
 
             if let failure = tab.failure {
                 Trouble(message: failure) { tab.reload() }
+                    .padding(under)
+                    .background(Palette.ground)
                     .transition(.opacity)
             }
 
@@ -61,6 +68,7 @@ struct Page: View {
                         insertion: .opacity.combined(with: .scale(scale: 0.92, anchor: pull.back ? .leading : .trailing)),
                         removal: .opacity.combined(with: .scale(scale: 0.96, anchor: pull.back ? .leading : .trailing))
                     ))
+                    .padding(under)
             } else if let pull = tab.pull {
                 Disc(pull: pull)
                     // A disc for each edge, never one that changes edges: a
@@ -74,6 +82,7 @@ struct Page: View {
                     // frame's middle it came in from the middle, sliding out
                     // to its edge — from the right, going back.
                     .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: pull.back ? .leading : .trailing)))
+                    .padding(under)
             }
         }
         .animation(Motion.quick, value: tab.failure)
@@ -198,6 +207,7 @@ private struct HistoryList: View {
 struct WebStage: NSViewRepresentable {
     let page: NSView?
     var corner: CGFloat = 0
+    var under = EdgeInsets()
 
     func makeNSView(context: Context) -> StageView { StageView() }
 
@@ -208,6 +218,7 @@ struct WebStage: NSViewRepresentable {
         view.layer?.cornerRadius = corner
         view.layer?.cornerCurve = .continuous
         view.layer?.masksToBounds = corner > 0
+        view.under = NSEdgeInsets(top: under.top, left: under.leading, bottom: under.bottom, right: under.trailing)
         view.show(page)
     }
 }
@@ -226,6 +237,12 @@ final class StageView: NSView {
     /// every layout. Nothing to fall out of step with.
     private weak var wanted: NSView?
     private var fullscreenWatch: NSKeyValueObservation?
+
+    /// How much of the page the chrome covers (Under.swift), told to the
+    /// page on show. A page left for another tab keeps what it was told:
+    /// taking it back off laid a background YouTube out again, and again
+    /// on the way back.
+    var under = NSEdgeInsets()
 
     /// A page kept in the window, unseen, a moment after its tab was left:
     /// its video is on its way into macOS's picture-in-picture, and WebKit
@@ -355,6 +372,7 @@ final class StageView: NSView {
         if !(docked && subviews.contains(where: Self.isInspector)) {
             wanted.frame = bounds
         }
+        if let web = wanted as? WKWebView { Under.cover(web, under) }
     }
 
     /// Whether the page on show has its Web Inspector up. WebKit answers only

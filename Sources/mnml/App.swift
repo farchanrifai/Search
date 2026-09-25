@@ -271,10 +271,14 @@ struct ContentView: View {
             // it and is resized once, not on every frame of the slide: laid out
             // again thirty times a second, the page juddered along its right
             // edge and overshot the window with the spring (see `room`).
+            //
+            // Unless the page is to run under them, as in Safari (Under.swift):
+            // then it is the window's size, still, and told how much of it
+            // they cover instead.
             stage
-                .padding(.leading, roomed.width)
-                .padding(.top, roomed.height)
-                .offset(x: chrome.width - roomed.width, y: chrome.height - roomed.height)
+                .padding(.leading, beside.width)
+                .padding(.top, beside.height)
+                .offset(x: under ? 0 : chrome.width - roomed.width, y: under ? 0 : chrome.height - roomed.height)
 
             // The column of tabs, in the way that has one. It takes the full
             // height, so the traffic lights sit in its own corner rather than
@@ -308,16 +312,16 @@ struct ContentView: View {
     @ViewBuilder
     private var stage: some View {
         if let pick = browser.splitPicking, let tab = browser.tab(pick.tab) {
-            SplitPickStage(browser: browser, pick: pick) { pane(tab, corner: SplitStage<EmptyView>.corner) }
+            SplitPickStage(browser: browser, pick: pick) { pane(tab, corner: SplitStage<EmptyView>.corner, under: EdgeInsets()) }
         } else if let split = browser.shownSplit {
-            SplitStage(browser: browser, split: split) { pane($0, corner: SplitStage<EmptyView>.corner) }
+            SplitStage(browser: browser, split: split) { pane($0, corner: SplitStage<EmptyView>.corner, under: EdgeInsets()) }
                 .overlay {
                     if browser.prefs.showsLinks { LinkBubble(status: browser.linkStatus) }
                 }
         } else if let tab = browser.active {
-            pane(tab)
+            pane(tab, under: covered)
                 .overlay {
-                    if browser.prefs.showsLinks { LinkBubble(status: browser.linkStatus) }
+                    if browser.prefs.showsLinks { LinkBubble(status: browser.linkStatus).padding(covered) }
                 }
         } else {
             Palette.ground
@@ -325,19 +329,22 @@ struct ContentView: View {
     }
 
     /// One page, with what floats over it: find, and the accounts a field
-    /// offers.
-    private func pane(_ tab: Tab, corner: CGFloat = 0) -> some View {
-        Page(tab: tab, corner: corner)
+    /// offers — both clear of the chrome the page may run under.
+    private func pane(_ tab: Tab, corner: CGFloat = 0, under: EdgeInsets) -> some View {
+        Page(tab: tab, corner: corner, under: under)
             .overlay(alignment: .topTrailing) {
                 if browser.finding, tab.id == browser.activeID {
                     FindBar(browser: browser)
                         .transition(.move(edge: .top).combined(with: .opacity))
+                        .padding(.top, under.top)
                 }
             }
             .overlay(alignment: .topLeading) {
                 if let asked = browser.suggesting, asked.tab == tab.id {
                     AccountList(browser: browser, asked: asked)
                         .transition(.opacity)
+                        .padding(.leading, under.leading)
+                        .padding(.top, under.top)
                 }
             }
             .animation(Motion.quick, value: browser.suggesting)
@@ -358,6 +365,23 @@ struct ContentView: View {
 
     /// The room the page is laid out to leave them, which is not animated.
     private var roomed: CGSize { room ?? chrome }
+
+    /// The page runs under the column and the strip (Under.swift).
+    private var under: Bool { browser.pageUnder }
+
+    /// The room the stage leaves beside the chrome: none, with the page
+    /// running under it.
+    private var beside: CGSize { under ? .zero : roomed }
+
+    /// How much of the page the chrome covers, with the page under it. The
+    /// room, not the chrome: it changes when the room does, once a slide,
+    /// never on its frames — each change lays the page out again. So the
+    /// column going away uncovers the page at once and it reflows as the
+    /// column slides off it; the column arriving slides over the page as it
+    /// is, which moves its content clear once the slide is over.
+    private var covered: EdgeInsets {
+        under ? EdgeInsets(top: roomed.height, leading: roomed.width, bottom: 0, trailing: 0) : EdgeInsets()
+    }
 
     /// Chrome going away gives the page its room at once, the page sliding
     /// out from under it at its new size. Chrome arriving slides over a page
