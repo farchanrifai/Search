@@ -109,3 +109,35 @@ as a smear, and wasn't live).
   feel; commit to `main` only once they've tried it.
 - Match the surrounding code: comments explain *why*, in plain sentences, in
   the voice of the file (see `SystemPiP.swift`, `Stage.swift`).
+
+## Progress (branch `claude/safari-style-window-sidebar-feto94`)
+
+Written without a Mac: nothing below has been built or run.
+
+- **Step 1:** `docs/mnml/scratch/InsetProbe.swift`, run with
+  `swiftc -parse-as-library docs/mnml/scratch/InsetProbe.swift -o /tmp/probe && /tmp/probe`.
+  Run it first: if the left inset is ignored, the column half comes out.
+- **Steps 2–5:** `Sources/mnml/Under.swift` holds the WebKit calls (asked by
+  name, so any SDK builds) and `Browser.pageUnder`. Settings › Tabs › Page
+  under the sidebar (`tabs.under`), off by default, and only with the Mac
+  window material on. The stage keeps no room beside the chrome; `Page` /
+  `WebStage` / `StageView.under` carry the covered strip to the web view.
+  The inset follows `roomed`, not `chrome`, so it changes once a slide, as
+  the page's size did: going away uncovers at once, arriving covers once the
+  slide is over.
+- **Split view keeps today's layout.** Its pages sit on cards with a margin
+  and a ground colour of their own, so they never meet the column; a left
+  inset for the leftmost card would only add a strip of fill beside a gap.
+- **Blending:** `.withinWindow` when the page is under.
+  `defaults write com.farchan.mnml.test under.behindWindow -bool YES` puts
+  back `.behindWindow` for comparing; remove the key once chosen.
+- **Step 6, checked:** find bar, account list, link bubble (and where it
+  moves to dodge the pointer), history disc and list, the failure and
+  floating messages are kept clear of the chrome. The floating window
+  clears the inset and keeps the width the page showed. Peek and the split
+  drop layer already pad by the chrome. Picture-in-picture, `park` and
+  `placed()` measure the web view itself, which no longer moves: no change.
+  Fold, tab previews, immersed video: chrome is zero or floats as before.
+- **To look at on the Mac:** the `cover` picture a waking tab shows is laid
+  over the whole web view — right if WebKit's snapshot includes the covered
+  strip, 220 pt off if it doesn't. Same for tab previews in the switcher.
