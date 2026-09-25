@@ -138,6 +138,30 @@ Written without a Mac: nothing below has been built or run.
   drop layer already pad by the chrome. Picture-in-picture, `park` and
   `placed()` measure the web view itself, which no longer moves: no change.
   Fold, tab previews, immersed video: chrome is zero or floats as before.
-- **To look at on the Mac:** the `cover` picture a waking tab shows is laid
-  over the whole web view — right if WebKit's snapshot includes the covered
-  strip, 220 pt off if it doesn't. Same for tab previews in the switcher.
+- **Bookmarks bar** wears the material too with the page under, rather than
+  an opaque band inside see-through chrome.
+- **Tab previews** (switcher, hover cards, split picker) leave the covered
+  strip out: `WKSnapshotConfiguration.rect` is the part of the page that
+  shows. The picture a sleeping tab keeps stays whole, since it is laid over
+  the whole web view as the `cover` when the tab wakes.
+- **The switch is hidden** where WebKit can't be told (before macOS 26).
+- **Checked here:** every changed file parses (tree-sitter's Swift grammar;
+  `App.swift` has the same three grammar quirks it had before). Not
+  type-checked or built: no Swift toolchain can be fetched in this session.
+
+## To try on the Mac
+
+1. The probe (above). Left inset honoured? Fill visible? Page width right?
+2. `./build.sh release test`, fix anything that doesn't compile.
+3. Settings › Tabs › Page under the sidebar on. YouTube in the sidebar
+   layout, then the strip layout, with and without the bookmarks bar.
+4. Hide and show the column (and fold it): content moves clear once the
+   slide is over, and is uncovered at once going away.
+5. Find (⌘F), a login field's accounts, hovering a link (bubble in the
+   page's corner, not under the column), swipe back, a failed load.
+6. Float a video, bring it back; picture-in-picture in and out; full screen.
+7. The tab switcher's previews: no strip of fill on their left.
+8. Waking a sleeping tab: its picture lines up with the page.
+9. Google Sheets and a page wider than the window: nothing under the column.
+10. `defaults write com.farchan.mnml.test under.behindWindow -bool YES`,
+    compare, choose; then the key comes out.

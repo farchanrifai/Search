@@ -908,6 +908,19 @@ final class Tab: ObservableObject, Identifiable {
         }
         guard let built else { return done(nil) }
         let configuration = WKSnapshotConfiguration()
+        // The page as it shows: a page running under the column (Under.swift)
+        // is laid out clear of it, and its covered strip, only fill, is left
+        // out of the picture.
+        let covered = Under.covered(built)
+        if covered.left > 0 || covered.top > 0 {
+            let bounds = built.bounds
+            configuration.rect = CGRect(
+                x: covered.left,
+                y: built.isFlipped ? covered.top : 0,
+                width: bounds.width - covered.left,
+                height: bounds.height - covered.top
+            )
+        }
         configuration.snapshotWidth = NSNumber(value: Double(width))
         built.takeSnapshot(with: configuration) { image, _ in done(image) }
     }
