@@ -1763,11 +1763,33 @@ final class Browser: NSObject, ObservableObject {
         // mnml's floating window where WebKit can't. Only while it plays:
         // WebKit counts a paused video as one it could float, and leaving a
         // paused one lifted it out all the same.
-        if tab.noisy, SystemPiP.enter(tab.web) {
-            systemPiP = tab.id
-            StageView.park(tab.web, for: 1)
+        if tab.noisy {
+            if SystemPiP.enter(tab.web) {
+                systemPiP = tab.id
+                StageView.park(tab.web, for: 1)
+                return
+            }
+            // WebKit not ready to say it can: asked to look again, and tried
+            // once more a moment later, the page kept in the window meanwhile.
+            // Falling straight back to mnml's own window gave a different
+            // window from one leave to the next.
+            StageView.park(tab.web, for: 1.3)
+            SystemPiP.prepare(tab.web)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self, weak tab] in
+                guard let self, let tab, self.activeID != tab.id, !self.floater.showing else { return }
+                if SystemPiP.enter(tab.web) {
+                    self.systemPiP = tab.id
+                } else {
+                    self.liftOwn(tab, quietly: quietly)
+                }
+            }
             return
         }
+        liftOwn(tab, quietly: quietly)
+    }
+
+    /// mnml's own floating window (Float.swift), where macOS's can't be had.
+    private func liftOwn(_ tab: Tab, quietly: Bool) {
         tab.web.evaluateInSearch(Isolate.on) { [weak self] answer in
             MainActor.assumeIsolated {
                 guard let self else { return }
