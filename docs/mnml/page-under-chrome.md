@@ -14,6 +14,24 @@ theme-color (it flipped light/dark against the setting), and a sampled glow
 (snapshots of the page's edge a few times a second, blurred over the bar — read
 as a smear, and wasn't live).
 
+## What it should look like (no screenshots available)
+
+- Safari 26 on macOS, sidebar on the left, YouTube open (dark page). The
+  sidebar is still the Mac's see-through material everywhere. Near the page,
+  the page's colours show through faintly — as you scroll, the sidebar's
+  colour shifts with what is next to it (darker beside the dark header,
+  warmer beside a bright thumbnail or the playing video). The user calls it
+  "like YouTube's ambient mode": a soft bleed, not a colour change.
+- It updates live with scrolling and video, every frame — this is why the
+  sampled-glow attempt failed: at ~6 updates a second it trailed, and even
+  toned down (14 %, last fifth of the bar) it read as a smear.
+- The bar's text and icons follow the app's own Light / Dark / System
+  setting (Settings › General), never the page. A first attempt that made the
+  bar take the page's colour flipped the window between light and dark on
+  every tab switch; the user rejected it.
+- The native material must stay. The bleed is the page seen through it, not
+  a replacement for it.
+
 ## Current state
 
 - `Sources/mnml/App.swift` → `window_`: a `ZStack`. `stage` (the page) is
@@ -80,5 +98,14 @@ as a smear, and wasn't live).
 
 ## Working
 
-Experiments build into "mnml Test" (`./build.sh release test`); the main app
-is for real work. Commit only once the user has tried it by feel.
+- **mnml only builds on a Mac** (AppKit, WebKit, SwiftUI; `swift build` /
+  `./build.sh`). A session without macOS can't compile, run or look at it:
+  work on a branch (e.g. `page-under-chrome`), keep each step small and
+  self-contained, and leave building and trying to the user, who builds
+  experiments into "mnml Test" with `./build.sh release test` (the main app
+  is for real work). Step 1 (the scratch app) has to run on the Mac too —
+  write it as a small standalone Swift file the user can run with `swiftc`.
+- Say plainly what couldn't be verified. The user judges every change by
+  feel; commit to `main` only once they've tried it.
+- Match the surrounding code: comments explain *why*, in plain sentences, in
+  the voice of the file (see `SystemPiP.swift`, `Stage.swift`).
