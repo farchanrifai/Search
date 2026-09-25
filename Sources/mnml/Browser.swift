@@ -233,10 +233,15 @@ final class Browser: NSObject, ObservableObject {
     // MARK: - looking for something on the page
 
     @Published var finding = false
-    @Published var needle = "" { didSet { look(forward: true) } }
+    @Published var needle = "" { didSet { if needle != oldValue { look(forward: true) } } }
     /// Set when the page doesn't hold what was asked for.
     @Published private(set) var missed = false
     @Published private(set) var findFocus = 0
+    /// How many times what was asked for is on the page, and which one is
+    /// shown (from 0), as WebKit counts them (FindCounter).
+    @Published var matches = 0
+    @Published var matchIndex = -1
+
 
     func openFind() {
         guard active?.isBlank == false else { return }
@@ -249,24 +254,42 @@ final class Browser: NSObject, ObservableObject {
         finding = false
         needle = ""
         missed = false
-        // There is no public way to call off a find, but letting go of the
-        // selection is what taking the highlight away amounts to.
-        active?.web.evaluateJavaScript("window.getSelection().removeAllRanges()")
+        matches = 0
+        matchIndex = -1
+        active?.built?.evaluateInSearch(PageFind.clear)
     }
 
     func look(forward: Bool) {
         guard let web = active?.web, !needle.isEmpty else {
             missed = false
+            matches = 0
+            matchIndex = -1
+            active?.built?.evaluateInSearch(PageFind.clear)
             return
         }
-        let configuration = WKFindConfiguration()
-        configuration.backwards = !forward
-        configuration.caseSensitive = false
-        configuration.wraps = true
-        web.find(needle, configuration: configuration) { [weak self] result in
-            MainActor.assumeIsolated { self?.missed = !result.matchFound }
+        let asked = needle
+        web.evaluateInSearch(PageFind.script(needle, by: forward ? 1 : -1)) { [weak self] answer in
+            MainActor.assumeIsolated {
+                guard let self, asked == self.needle else { return }
+                guard let pair = answer as? [NSNumber], pair.count == 2 else {
+                    // A page the script can't mark (no CSS highlights): WebKit's
+                    // own find, uncounted.
+                    let configuration = WKFindConfiguration()
+                    configuration.backwards = !forward
+                    configuration.caseSensitive = false
+                    configuration.wraps = true
+                    web.find(asked, configuration: configuration) { [weak self] result in
+                        MainActor.assumeIsolated { self?.missed = !result.matchFound }
+                    }
+                    return
+                }
+                self.matches = pair[0].intValue
+                self.matchIndex = pair[1].intValue
+                self.missed = self.matches == 0
+            }
         }
     }
+
 
     /// ⌘⇧M. Whatever is making noise in this tab stops making noise.
     func pauseMedia() {
