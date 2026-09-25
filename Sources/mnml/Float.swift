@@ -121,10 +121,23 @@ final class Float {
         // inside it instead of sizing the window. It comes back on landing.
         (page as? WKWebView)?.allowsMagnification = false
 
+        // The page keeps its width: laid out at the window's small size,
+        // a site like YouTube rebuilt itself for a phone on the way out and
+        // for the desktop on the way back — the flicker both ways, and the
+        // scroll position lost. So it stays as wide as it was, at the
+        // window's shape, and is drawn smaller: the holder's bounds are the
+        // page's size, its frame the window's, and AppKit scales between.
+        let wide = max(page.frame.width, size.width)
+        let inner = NSSize(width: wide, height: (wide * size.height / size.width).rounded())
+        let holder = NSView(frame: ground.bounds)
+        holder.autoresizingMask = [.width, .height]
+        holder.wantsLayer = true
+        holder.setBoundsSize(inner)
         page.removeFromSuperview()
-        page.frame = ground.bounds
-        page.autoresizingMask = [.width, .height]
-        ground.addSubview(page)
+        page.frame = NSRect(origin: .zero, size: inner)
+        page.autoresizingMask = []
+        holder.addSubview(page)
+        ground.addSubview(holder)
 
         let controls = Controls(frame: ground.bounds)
         controls.autoresizingMask = [.width, .height]
@@ -140,8 +153,17 @@ final class Float {
         self.controls = controls
 
         panel.contentView = ground
+        // Shown once the page has settled at its new size: put up at once,
+        // it showed black, then the page re-laying out, then the video.
+        panel.alphaValue = 0
         panel.orderFrontRegardless()
         self.panel = panel
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak panel] in
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.18
+                panel?.animator().alphaValue = 1
+            }
+        }
 
         ticker = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -152,7 +174,7 @@ final class Float {
                 // and rather than hunt every path that could, this makes it
                 // impossible for the empty black rectangle to outlive it by
                 // more than half a second.
-                if self.page?.superview !== ground {
+                if self.page?.superview?.superview !== ground {
                     self.onClose?()
                     return
                 }
@@ -790,6 +812,9 @@ enum Isolate {
       }
       if (!best) return 'none';
 
+      // Where the page was scrolled, before hiding its overflow and the page
+      // re-laying out at the window's small size lose it (see off).
+      window.__officeFloatScroll = [window.scrollX, window.scrollY];
       best.setAttribute('data-office-float', '');
       var sheet = document.getElementById('office-float');
       if (!sheet) {
@@ -920,6 +945,18 @@ enum Isolate {
       if (sheet) sheet.textContent = '';
       var video = document.querySelector('[data-office-float]');
       if (video) video.removeAttribute('data-office-float');
+
+      // Back where it was scrolled. The page is put back at full size a
+      // moment after this runs, and lays itself out again over the next
+      // few frames, so the place is set again as it does.
+      // ponytail: fixed retries over half a second, not a layout observer.
+      var at = window.__officeFloatScroll;
+      window.__officeFloatScroll = null;
+      if (at) {
+        [0, 60, 150, 300, 500].forEach(function (ms) {
+          setTimeout(function () { window.scrollTo(at[0], at[1]); }, ms);
+        });
+      }
       return 'landed';
     })();
     """

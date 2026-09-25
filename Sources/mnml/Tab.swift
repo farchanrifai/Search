@@ -111,6 +111,7 @@ enum Web {
         config.mediaTypesRequiringUserActionForPlayback = .audio
         if Store.testing, !Store.measuring { config.preferences.inactiveSchedulingPolicy = .none }
         inspector(config.preferences)
+        pictureInPicture(config.preferences)
         return config
     }
 
@@ -126,6 +127,17 @@ enum Web {
         guard preferences.responds(to: set) else { return }
         typealias Setter = @convention(c) (AnyObject, Selector, Bool) -> Void
         unsafeBitCast(preferences.method(for: set), to: Setter.self)(preferences, set, on)
+    }
+
+    /// macOS's own picture-in-picture, which WebKit keeps off unless the app
+    /// turns it on, as Safari does. Off, a video could never be handed to the
+    /// system's window, and leaving its tab fell back to mnml's own
+    /// (SystemPiP.swift, Float.swift).
+    static func pictureInPicture(_ preferences: WKPreferences) {
+        let set = NSSelectorFromString("_setAllowsPictureInPictureMediaPlayback:")
+        guard preferences.responds(to: set) else { return }
+        typealias Setter = @convention(c) (AnyObject, Selector, Bool) -> Void
+        unsafeBitCast(preferences.method(for: set), to: Setter.self)(preferences, set, true)
     }
 
     static func preferDisplayRefreshRate(_ preferences: WKPreferences) {
@@ -529,7 +541,12 @@ final class Tab: ObservableObject, Identifiable {
         images.tab = self
         shop.tab = self
         middles.tab = self
-        ears.watch(web) { [weak self] on in self?.noisy = on }
+        ears.watch(web) { [weak self, weak web] on in
+            self?.noisy = on
+            // Playing: WebKit told to look at its video now, so leaving the
+            // tab can hand it to picture-in-picture (SystemPiP.prepare).
+            if on, let web { SystemPiP.prepare(web) }
+        }
         return web
     }
 

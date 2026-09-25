@@ -226,6 +226,27 @@ final class StageView: NSView {
     /// every layout. Nothing to fall out of step with.
     private weak var wanted: NSView?
 
+    /// A page kept in the window, unseen, a moment after its tab was left:
+    /// its video is on its way into macOS's picture-in-picture, and WebKit
+    /// asks where the video is only after the tab has gone. Out of the window
+    /// by then, it measured from the page's own corner, with no window to
+    /// place it in, and the flight started from the lower left of the screen
+    /// (SystemPiP). Its own stage goes with its tab, so the window holds it:
+    /// where it was, fully transparent — a view's alpha, unlike hiding it,
+    /// doesn't tell WebKit the page is out of sight.
+    static func park(_ page: NSView, for seconds: TimeInterval) {
+        guard let content = page.window?.contentView, let holder = page.superview else { return }
+        let frame = holder.convert(page.frame, to: content)
+        page.removeFromSuperview()
+        page.frame = frame
+        page.alphaValue = 0
+        content.addSubview(page, positioned: .below, relativeTo: nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+            // Taken back by a stage meanwhile — its tab chosen again — it stays.
+            if page.superview === content { page.removeFromSuperview() }
+        }
+    }
+
     /// The Web Inspector each page off show had docked beside it. WebKit
     /// docks it once, on show; a page coming back without it was laid out
     /// short, beside an empty space.
@@ -234,6 +255,33 @@ final class StageView: NSView {
     override func layout() {
         super.layout()
         settle()
+        placed()
+    }
+
+    /// Moved without being resized — the sidebar made wider — the page has
+    /// moved in the window too.
+    override func setFrameOrigin(_ origin: NSPoint) {
+        super.setFrameOrigin(origin)
+        placed()
+    }
+
+    /// Where the page was last told it is, in the window.
+    private var told: NSRect?
+
+    /// WebKit keeps its own note of where the page sits in the window, and
+    /// updates it when the page itself moves. The page never does — it sits
+    /// at the stage's corner while SwiftUI moves the stage — so the note
+    /// stayed at the window's corner, and picture-in-picture flew in from
+    /// the bottom left. renewGState is what AppKit calls when a view moves in
+    /// its window; WebKit answers it by looking again. Only when it really
+    /// moved: told on every layout, it nudged a picture-in-picture window
+    /// mid-flight.
+    private func placed() {
+        guard let wanted, wanted.window != nil else { return }
+        let here = wanted.convert(wanted.bounds, to: nil)
+        guard here != told else { return }
+        told = here
+        wanted.renewGState()
     }
 
     func show(_ page: NSView?) {
@@ -241,6 +289,8 @@ final class StageView: NSView {
             Self.docks.setObject(dock, forKey: leaving)
             dock.removeFromSuperview()
         }
+        // Another page: it has its own note to be told, wherever it lands.
+        if wanted !== page { told = nil }
         wanted = page
         settle()
     }

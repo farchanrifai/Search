@@ -1250,10 +1250,14 @@ final class Browser: NSObject, ObservableObject {
         // Coming back to the tab whose video is out brings it home first, so
         // it is never lifted and landed in the same breath.
         if floating == tab.id { land() }
+        // Out in macOS's picture-in-picture: back into the page once the page
+        // is on screen again, so the video slides into its place in it.
+        let fromPiP = systemPiP == tab.id
         // From one half of a split to the other, nothing is left.
         let beside = split(of: activeID)?.has(tab.id) == true
         if !beside { leaving() }
         activeID = tab.id
+        if fromPiP { DispatchQueue.main.async { [weak self] in self?.land() } }
         tab.touch()
         // A tab brought back from last time, or waking from ⌘W while pinned,
         // opens the moment you look at it — and only if there was nothing to
@@ -1277,7 +1281,7 @@ final class Browser: NSObject, ObservableObject {
         // A tab whose page is out in the little window takes the window with
         // it. Left alone, the window would go on holding a page belonging to a
         // tab that no longer exists.
-        if floating == tab.id { land() }
+        if floating == tab.id || systemPiP == tab.id { land() }
 
         // A pinned tab is not closed by ⌘W — it is put down. The letter keeps
         // its place, the page is let go, and you land on whatever you were
@@ -1704,19 +1708,41 @@ final class Browser: NSObject, ObservableObject {
 
     func appLeft() {
         guard prefs.floatsAway, Browser.front == nil || Browser.front === self else { return }
-        liftedAway = !floater.showing
+        liftedAway = !floater.showing && systemPiP == nil
         lift(active, quietly: true)
     }
 
     /// Back, and still on the tab it came from: into the tab again.
     func appBack() {
         defer { liftedAway = false }
-        if liftedAway, let id = floating, id == activeID { land() }
+        if liftedAway, let id = floating ?? systemPiP, id == activeID { land() }
     }
+
+    /// The tab whose video is in macOS's own picture-in-picture.
+    var systemPiP: Tab.ID? {
+        didSet { if systemPiP != nil { watchPiPReturn() } }
+    }
+
+    /// The system window's return button: this window and the tab come
+    /// forward, from wherever you were. WebKit is already putting the video
+    /// back, so it isn't asked again (systemPiP is let go first).
+    private func watchPiPReturn() {
+        guard pipReturn == nil else { return }
+        pipReturn = NotificationCenter.default.addObserver(forName: SystemPiP.returned, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, let id = self.systemPiP, let tab = self.tabs.first(where: { $0.id == id }) else { return }
+                self.systemPiP = nil
+                NSApp.activate(ignoringOtherApps: true)
+                Links.window?.makeKeyAndOrderFront(nil)
+                self.select(tab)
+            }
+        }
+    }
+    private var pipReturn: NSObjectProtocol?
 
     /// ⌘⇧P, for lifting one out by hand.
     func toggleFloat() {
-        if floater.showing {
+        if floater.showing || systemPiP != nil {
             land()
             return
         }
@@ -1733,6 +1759,15 @@ final class Browser: NSObject, ObservableObject {
         // A hero background on a studio's home page is a video too, and it
         // followed people around the desktop. ⌘⇧P still lifts from anywhere.
         if quietly, !Players.knows(tab.address) { return }
+        // macOS's own picture-in-picture first, as Safari does (SystemPiP.swift);
+        // mnml's floating window where WebKit can't. Only while it plays:
+        // WebKit counts a paused video as one it could float, and leaving a
+        // paused one lifted it out all the same.
+        if tab.noisy, SystemPiP.enter(tab.web) {
+            systemPiP = tab.id
+            StageView.park(tab.web, for: 1)
+            return
+        }
         tab.web.evaluateInSearch(Isolate.on) { [weak self] answer in
             MainActor.assumeIsolated {
                 guard let self else { return }
@@ -1750,6 +1785,11 @@ final class Browser: NSObject, ObservableObject {
     /// Back into its tab. The stage takes the page again on its next layout,
     /// which is what the self-healing there is for.
     func land() {
+        // Out in the system's window: back into its page.
+        if let id = systemPiP {
+            systemPiP = nil
+            if let tab = tabs.first(where: { $0.id == id }), let web = tab.built { SystemPiP.exit(web) }
+        }
         // The window closes whatever else is true. Tying that to the bookkeeping
         // is how a little window outlives the thing that opened it.
         if floater.showing { floater.drop() }
@@ -1758,6 +1798,7 @@ final class Browser: NSObject, ObservableObject {
         tab.floating = false
         tab.web.evaluateInSearch(Isolate.off)
     }
+
 
     func prepare(_ tab: Tab) {
         tab.delegate = self
