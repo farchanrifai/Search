@@ -28,7 +28,7 @@ enum Web {
     /// included, and registering a name twice is a hard crash.
     @MainActor static func release(_ controller: WKUserContentController) {
         for name in [ScrollRelay.name, VeilRelay.name, FormRelay.name, ImageRelay.name,
-                     StoreRelay.name, PasskeyRelay.name, MiddleRelay.name] {
+                     StoreRelay.name, PasskeyRelay.name, MiddleRelay.name, Notify.name] {
             controller.removeScriptMessageHandler(forName: name, contentWorld: world)
             controller.removeScriptMessageHandler(forName: name, contentWorld: .page)
         }
@@ -494,6 +494,7 @@ final class Tab: ObservableObject, Identifiable {
         controller.add(shop, contentWorld: Web.world, name: StoreRelay.name)
         controller.add(forms, contentWorld: Web.world, name: FormRelay.name)
         controller.addScriptMessageHandler(passkeyRelay, contentWorld: Web.world, name: PasskeyRelay.name)
+        controller.addScriptMessageHandler(Notify.shared, contentWorld: Web.world, name: Notify.name)
         hovered.tab = self
         controller.add(hovered, contentWorld: .defaultClient, name: HoveredLink.name)
         controller.add(middles, contentWorld: Web.world, name: MiddleRelay.name)
@@ -623,6 +624,14 @@ final class Tab: ObservableObject, Identifiable {
         // that frame's own business, and its link is not this tab's to open.
         controller.addUserScript(
             WKUserScript(source: MiddleRelay.watch, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: Web.world)
+        )
+        // A page's notifications, through the Mac's (Notify.swift): in the
+        // page's world to stand in for its Notification, bridged from mnml's.
+        controller.addUserScript(
+            WKUserScript(source: Notify.page, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page)
+        )
+        controller.addUserScript(
+            WKUserScript(source: Notify.bridge, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: Web.world)
         )
         // Passkeys stand in the page's own world — they replace the page's
         // functions — and reach Search through a bridge in Search's, off or on:

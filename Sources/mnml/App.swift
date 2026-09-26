@@ -612,15 +612,18 @@ struct ContentView: View {
     /// A page asking to see or hear you. Named by the site, in its own words,
     /// with the answer remembered so it is asked once and not every call.
     private func captureAsking(_ ask: Browser.CaptureAsk) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: ask.wants == "microphone" ? "mic" : "video")
+        let off = ask.wants == "notifications off"
+        return HStack(spacing: 12) {
+            Image(systemName: ask.wants.hasPrefix("notifications") ? (off ? "bell.slash" : "bell") : ask.wants == "microphone" ? "mic" : "video")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Palette.muted)
-            Text("\(ask.host) wants to use your \(ask.wants)")
+            Text(off ? "\(ask.host) wants to notify you, but notifications for mnml are off in System Settings"
+                 : ask.wants == "notifications" ? "\(ask.host) wants to send you notifications"
+                 : "\(ask.host) wants to use your \(ask.wants)")
                 .font(.system(size: 12.5))
                 .foregroundStyle(Palette.ink)
             Button { browser.allowCapture() } label: {
-                Text("Allow")
+                Text(off ? "Open Settings" : "Allow")
                     .font(.system(size: 12))
                     .foregroundStyle(Palette.ground)
                     .padding(.horizontal, 11)
@@ -629,7 +632,7 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
             Button { browser.denyCapture() } label: {
-                Text("Don't allow")
+                Text(off ? "Not now" : "Don't allow")
                     .font(.system(size: 12))
                     .foregroundStyle(Palette.muted)
             }

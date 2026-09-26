@@ -629,7 +629,7 @@ final class Browser: NSObject, ObservableObject {
     private func answerCapture(_ decision: WKPermissionDecision) {
         guard let decide else { return }
         // Remembered per site, so a call you take every week asks once.
-        Store.settings.set(decision == .grant, forKey: "capture." + askedAbout)
+        if !askedAbout.isEmpty { Store.settings.set(decision == .grant, forKey: "capture." + askedAbout) }
         decide(decision)
         self.decide = nil
         askedAbout = ""
@@ -2196,7 +2196,12 @@ final class Browser: NSObject, ObservableObject {
             refusals += 1
             return
         }
-        (active ?? tabs.first)?.go(to: url)
+        if opening {
+            opening = false
+            _ = open(url, foreground: true)
+        } else {
+            (active ?? tabs.first)?.go(to: url)
+        }
         editing = false
         typed = ""
     }
@@ -2498,6 +2503,26 @@ extension Browser: WKNavigationDelegate, WKUIDelegate {
         decide = decisionHandler
         askedAbout = key
         asking = CaptureAsk(host: host, wants: Browser.name(for: type))
+    }
+
+    /// A page asking to send notifications (Notify.swift), put to you as the
+    /// camera is and remembered the same way. Nil: not asked, another
+    /// question already up.
+    func askNotifications(host: String, answer: @escaping (Bool?) -> Void) {
+        guard decide == nil else { return answer(nil) }
+        decide = { answer($0 == .grant) }
+        askedAbout = "notify:" + host
+        asking = CaptureAsk(host: host, wants: "notifications")
+    }
+
+    /// The same bar when the Mac has mnml's notifications off: a site can't be
+    /// allowed what the Mac won't show, so it offers the way to System
+    /// Settings instead, and nothing is remembered.
+    func askNotificationsOff(host: String) {
+        guard decide == nil else { return }
+        decide = { if $0 == .grant, let url = Notify.settings { NSWorkspace.shared.open(url) } }
+        askedAbout = ""
+        asking = CaptureAsk(host: host, wants: "notifications off")
     }
 
     private static func name(for type: WKMediaCaptureType) -> String {
