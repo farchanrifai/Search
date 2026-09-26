@@ -176,8 +176,10 @@ struct TabBar: View {
         // The Mac's sidebar material, as the column has it (Frosted).
         .background {
             if browser.prefs.frostedSidebar {
-                Frosted(blending: browser.pageUnder ? Under.blending : .behindWindow)
-                    .overlay { if landing { SideBar.hoverFill } }
+                Group {
+                    if browser.pageUnder { TopGlass() } else { Frosted(blending: .behindWindow) }
+                }
+                .overlay { if landing { SideBar.hoverFill } }
             } else {
                 landing ? Palette.hover : Color.clear
             }

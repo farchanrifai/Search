@@ -35,7 +35,7 @@ struct BookmarksBar: View {
         // chrome too: the page seen through it, as through the strip above.
         .background {
             if browser.pageUnder {
-                Frosted(blending: Under.blending)
+                TopGlass()
             } else {
                 Palette.ground
             }

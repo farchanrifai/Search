@@ -1,12 +1,13 @@
 import AppKit
+import SwiftUI
 import WebKit
 
-// The page under the column and the strip, as Safari 26 has it: the page is
-// laid out the full size of the window, WebKit is told which strip of it the
-// chrome covers, keeps the page's content clear of that strip and fills it
-// with colours carried on from the page's edge, and the chrome's material
-// blurs whatever is beneath it — the page, live, as it scrolls and plays.
-// See docs/mnml/page-under-chrome.md.
+// The page under the column and the strip, as Safari 26 has it. Under the
+// column, the page sits beside it and SwiftUI's background extension fills
+// the column's strip from the page's edge (Bleed, in Stage.swift). Under the
+// strip across the top, WebKit is told how much is covered: it starts the
+// page below it and lets it scroll up beneath, where Liquid Glass (TopGlass)
+// blurs it. See docs/mnml/page-under-chrome.md.
 //
 // Off unless asked for (Settings › Tabs). Off, or on a Mac whose WebKit
 // can't be told, the page sits beside the chrome as it always has.
@@ -28,11 +29,12 @@ enum Under {
         guard possible, !same(covered(web), insets) else { return }
         typealias Setter = @convention(c) (AnyObject, Selector, NSEdgeInsets) -> Void
         unsafeBitCast(web.method(for: insetsSetter), to: Setter.self)(web, insetsSetter, insets)
-        // Without the fill the covered strip is the page's plain background
-        // — still right, only flatter.
+        // WebKit's fill off: it paints the covered strip one flat colour
+        // over the page scrolling up beneath, where the glass is meant to
+        // blur the page itself.
         if web.responds(to: fill) {
             typealias Fill = @convention(c) (AnyObject, Selector, Bool) -> Void
-            unsafeBitCast(web.method(for: fill), to: Fill.self)(web, fill, insets.left > 0 || insets.top > 0)
+            unsafeBitCast(web.method(for: fill), to: Fill.self)(web, fill, false)
         }
     }
 
@@ -73,5 +75,73 @@ extension Browser {
     var pageUnder: Bool {
         prefs.pageUnder && prefs.frostedSidebar && Under.possible
             && shownSplit == nil && splitPicking == nil
+    }
+}
+
+/// The chrome across the top when the page runs beneath it: the page, blurred
+/// as it scrolls under, and tinted with the window's ground so the page's
+/// colour comes through rather than its detail.
+///
+/// Core Animation's backdrop layer, blurred, which is what the Mac's window
+/// materials are made of. Those materials don't see a web view there (flat
+/// grey), nor does SwiftUI's glass (the page left sharp behind the tabs'
+/// titles), and AppKit's Liquid Glass does but only softens it. Private, so
+/// asked for by name; where it isn't, Liquid Glass.
+struct TopGlass: View {
+    // ponytail: tuned by eye on Wikipedia and Google results; adjust by feel.
+    static let radius: Double = 20
+    static let tint: Double = 0.9
+
+    var body: some View {
+        if Blur.possible {
+            Blur(radius: Self.radius).overlay(Palette.ground.opacity(Self.tint))
+        } else if #available(macOS 26, *) {
+            Glass(tint: Palette.NS.ground.withAlphaComponent(Self.tint))
+        } else {
+            Frosted(blending: Under.blending)
+        }
+    }
+}
+
+private struct Blur: NSViewRepresentable {
+    let radius: Double
+
+    static let possible = NSClassFromString("CABackdropLayer") is CALayer.Type
+        && (NSClassFromString("CAFilter") as? NSObject.Type)?.responds(to: NSSelectorFromString("filterWithType:")) == true
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.wantsLayer = true
+        guard let backdrop = (NSClassFromString("CABackdropLayer") as? CALayer.Type)?.init(),
+              let filters = NSClassFromString("CAFilter") as? NSObject.Type,
+              let blur = filters.perform(NSSelectorFromString("filterWithType:"), with: "gaussianBlur")?
+                .takeUnretainedValue() as? NSObject
+        else { return view }
+        blur.setValue(radius, forKey: "inputRadius")
+        // The page's own colours at the bar's edges, not a fade to clear.
+        blur.setValue(true, forKey: "inputNormalizeEdges")
+        backdrop.filters = [blur]
+        backdrop.setValue(true, forKey: "windowServerAware")
+        backdrop.frame = view.bounds
+        backdrop.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        view.layer?.addSublayer(backdrop)
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {}
+}
+
+@available(macOS 26, *)
+private struct Glass: NSViewRepresentable {
+    let tint: NSColor
+
+    func makeNSView(context: Context) -> NSGlassEffectView {
+        let glass = NSGlassEffectView()
+        glass.cornerRadius = 0
+        return glass
+    }
+
+    func updateNSView(_ glass: NSGlassEffectView, context: Context) {
+        glass.tintColor = tint
     }
 }
