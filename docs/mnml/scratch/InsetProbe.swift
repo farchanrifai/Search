@@ -17,6 +17,7 @@ import WebKit
 @main
 struct InsetProbe {
     static func main() {
+        setvbuf(stdout, nil, _IOLBF, 0)
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
         let probe = Probe()
@@ -103,7 +104,16 @@ final class Probe: NSObject, NSApplicationDelegate {
         report("_setTopContentInset:", web.responds(to: NSSelectorFromString("_setTopContentInset:")))
 
         resized()
-        go(NSButton(title: "", target: nil, action: nil))
+        // Scriptable without clicking: `probe <site index> [nofill] [behind] [noleft]`.
+        let args = CommandLine.arguments
+        fill = !args.contains("nofill"); within = !args.contains("behind"); left = !args.contains("noleft")
+        apply()
+        load(Int(args.dropFirst().first ?? "") ?? 0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+            if args.contains("scroll") { self.web.evaluateJavaScript("scrollTo(0, 500)") }
+            self.measure()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.inspect() }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { true }
@@ -132,8 +142,10 @@ final class Probe: NSObject, NSApplicationDelegate {
         apply()
     }
 
-    @objc private func go(_ button: NSButton) {
-        guard let url = URL(string: sites[button.tag].1) else { return }
+    @objc private func go(_ button: NSButton) { load(button.tag) }
+
+    private func load(_ index: Int) {
+        guard let url = URL(string: sites[index].1) else { return }
         web.load(URLRequest(url: url))
     }
 
@@ -170,6 +182,27 @@ final class Probe: NSObject, NSApplicationDelegate {
             unsafeBitCast(web.method(for: fills), to: Setter.self)(web, fills, fill)
         }
         measure()
+    }
+
+    /// What WebKit's fill is working from: the colours it sampled from fixed
+    /// content at each edge, whether it shows an extension view there, and
+    /// the views it has put inside the web view.
+    private func inspect() {
+        for name in ["_sampledTopFixedPositionContentColor", "_sampledLeftFixedPositionContentColor",
+                     "_sampledPageTopColor", "_fixedContainerEdges", "_containerForFixedColorExtension",
+                     "_topScrollPocket", "underPageBackgroundColor"] {
+            let sel = NSSelectorFromString(name)
+            guard web.responds(to: sel), let m = class_getInstanceMethod(WKWebView.self, sel) else { print(name, "missing"); continue }
+            let type = String(cString: method_copyReturnType(m))
+            print(name, type == "@" ? String(describing: web.perform(sel)?.takeUnretainedValue()) : "(type \(type))")
+        }
+        func dump(_ v: NSView, _ depth: Int) {
+            guard depth < 4 else { return }
+            let colour = v.layer?.backgroundColor.map { NSColor(cgColor: $0)?.description ?? "?" } ?? "-"
+            print(String(repeating: "  ", count: depth) + "\(type(of: v)) \(v.frame) hidden=\(v.isHidden) alpha=\(v.alphaValue) layerBg=\(colour)")
+            v.subviews.forEach { dump($0, depth + 1) }
+        }
+        dump(web, 0)
     }
 
     /// What the page thinks: how wide its viewport is (it should be the

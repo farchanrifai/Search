@@ -1,5 +1,35 @@
 # Plan: the page under the sidebar and top bar (Safari 26 bleed)
 
+## Where it ended up (2026-09-26, on the Mac)
+
+Working in mnml Test; the notes further down are the plan and the attempts
+before it, kept for the reasons things were dropped.
+
+- **Column:** SwiftUI's `.backgroundExtensionEffect()` on the page, with the
+  column's width as leading safe area (`Bleed` in `Stage.swift`). The page is
+  placed beside the column; a mirrored copy of its edge fills the strip under
+  it, live. A gradient in the window's ground over that copy keeps the colour
+  to `Bleed.reach` (84 pt) from the page's edge.
+- **Top strip and bookmarks bar:** WebKit's public `obscuredContentInsets`
+  (fill off) lets the page scroll up beneath; `TopGlass` in `Under.swift`
+  blurs it with Core Animation's private backdrop layer (radius 20) under a
+  90 % tint of the ground. Liquid Glass where that layer isn't.
+- **The double page** — a copy of the page painted over its own top-left
+  quarter, whatever did the extending — was the binary's recorded SDK:
+  SwiftPM stamps it with the deployment target (14.0), so macOS 26+ kept
+  mnml on the old behaviour. `build.sh` now writes the real SDK in with
+  `vtool` (the minimum stays 14). Every other app-wide macOS 26 behaviour
+  comes with it: look for changes anywhere.
+- **Dropped on the way:** WebKit's inset fill (one flat colour), a
+  `CAReplicatorLayer` (a web view copies as nothing), AppKit's
+  `NSBackgroundExtensionView` (upside-down copy that scrolled the wrong way,
+  and the double page), a portal layer of our own (scrambled WebKit tiles),
+  an `NSSplitViewController` rewrite (worked, but SwiftUI's modifier does
+  the same inside mnml's own window), and for the top bar the window
+  materials, SwiftUI's glass and a Core Image background filter (none of
+  them blur a web view) and AppKit's Liquid Glass (too light).
+- Probes for each are in `docs/mnml/scratch/`.
+
 **Goal:** the page's colours bleed live into the sidebar and the top bar, as in
 Safari 26 (and like YouTube's ambient mode), while the bars keep the native Mac
 material. Page content must never be hidden behind a bar.
