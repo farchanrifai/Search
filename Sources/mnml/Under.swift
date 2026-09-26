@@ -93,8 +93,8 @@ struct TopGlass: View {
     static let tint: Double = 0.9
 
     var body: some View {
-        if Blur.possible {
-            Blur(radius: Self.radius).overlay(Palette.ground.opacity(Self.tint))
+        if BackdropBlur.possible {
+            BackdropBlur(radius: Self.radius).overlay(Palette.ground.opacity(Self.tint))
         } else if #available(macOS 26, *) {
             Glass(tint: Palette.NS.ground.withAlphaComponent(Self.tint))
         } else {
@@ -103,7 +103,10 @@ struct TopGlass: View {
     }
 }
 
-private struct Blur: NSViewRepresentable {
+/// Whatever lies behind, blurred: Core Animation's backdrop layer, as the
+/// Mac's window materials are made of, at a radius of our own. Private, so
+/// asked for by name — check `possible` first.
+struct BackdropBlur: NSViewRepresentable {
     let radius: Double
 
     static let possible = NSClassFromString("CABackdropLayer") is CALayer.Type

@@ -363,7 +363,7 @@ extension Browser {
 
     /// A blank tab at the group's end, and the group open to show it.
     func newTab(in id: TabGroup.ID) {
-        newTab()
+        newTab(bar: false)
         guard let tab = active, tab.pin == nil else { return }
         change(id) { $0.open = true; $0.peek = nil }
         add([tab], to: id)

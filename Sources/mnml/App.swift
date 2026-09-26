@@ -439,12 +439,15 @@ struct ContentView: View {
     @ViewBuilder
     private var field: some View {
         if browser.fieldShowing {
-            Omnibox(browser: browser, over: !(browser.active?.isBlank ?? true))
-                // Centred on the page, not on the window. The column of tabs
-                // is not what the field is standing over, and dimming it along
-                // with the page says otherwise.
-                .padding(.leading, sidebar ? browser.prefs.sideWidth : 0)
-                .transition(.scale(scale: 0.97).combined(with: .opacity))
+            let over = !(browser.active?.isBlank ?? true)
+            Omnibox(browser: browser, over: over)
+                // On a blank tab, centred on the page, which is all the tab
+                // has. Raised over a page (⌘T, ⌘L, ⌘K), a bar over the whole
+                // window, as Arc's is, column and all.
+                .padding(.leading, sidebar && !over ? browser.prefs.sideWidth : 0)
+                // A fade, not a grow: grown, the dimming behind the field came
+                // in as a smaller box with hard edges before it filled the window.
+                .transition(.opacity)
         }
     }
 

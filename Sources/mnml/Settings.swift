@@ -297,6 +297,10 @@ struct SettingsPanel: View {
                 Switch(on: $prefs.showsNewTab)
             }
             Rule()
+            Line("⌘T opens the command bar", "Type where to go over the page you're on, as in Arc: a tab is made when you press Return, and an open tab you name is switched to. Off, ⌘T opens a blank tab at once") {
+                Switch(on: $prefs.commandBar)
+            }
+            Rule()
             Line("Tabs show", "Beside the title, and on a pinned square") {
                 Segmented(options: Glyph.allCases.map { ($0, $0.title) }, selection: $prefs.glyph)
             }
