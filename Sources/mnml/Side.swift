@@ -42,7 +42,6 @@ struct SideBar: View {
     @State private var landing = false
     /// The width the column had when the edge was picked up.
     @State private var grabbed: CGFloat?
-    @State private var onEdge = false
 
     /// A pin, picked up out of the grid — a separate state from the loose
     /// rows above, since the two gestures never happen at once but move on
@@ -165,9 +164,8 @@ struct SideBar: View {
             }
             .overlay { TintWash(prefs: prefs) }
         }
-        .overlay(alignment: .trailing) {
-            Rectangle().fill(Palette.hairline).frame(width: 1)
-        }
+        // No line down the column's edge, as in Arc: the column's own ground
+        // or material is edge enough.
         .overlay(alignment: .trailing) { edge }
         .onDrop(of: [.url, .text], isTargeted: $landing) { providers in
             browser.take(providers)
@@ -180,16 +178,16 @@ struct SideBar: View {
     }
 
     /// The column's edge: pull it to make the column wider or narrower,
-    /// double-click it to put it back. The hairline darkens under the pointer
-    /// so the edge says it can be taken before it is.
+    /// double-click it to put it back. Nothing drawn: the pointer turning to
+    /// the resize arrows is what says it can be taken.
     private var edge: some View {
-        Rectangle()
-            .fill(Palette.ink.opacity(onEdge || grabbed != nil ? 0.18 : 0))
-            .frame(width: onEdge || grabbed != nil ? 2 : 1)
-            .frame(width: 9)
+        Color.clear
+            // Across the edge, half over the page, so it can be found
+            // without aiming for a line that isn't drawn.
+            .frame(width: 14)
             .contentShape(Rectangle())
+            .offset(x: 7)
             .onHover { over in
-                onEdge = over
                 if over { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
             }
             .gesture(
@@ -204,7 +202,6 @@ struct SideBar: View {
             .modifier(OneClick(double: true) {
                 withAnimation(Motion.settle) { prefs.sideWidth = Metrics.side }
             })
-            .animation(Motion.quick, value: onEdge)
     }
 
     // MARK: - the spaces, as pages
