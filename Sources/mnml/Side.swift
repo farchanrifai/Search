@@ -155,12 +155,15 @@ struct SideBar: View {
         .clipped()
         .onAppear { SpaceSwipe.shared.start(for: browser) }
         .background {
-            if prefs.frostedSidebar {
-                Frosted(blending: browser.pageUnder ? Under.blending : .behindWindow)
-                    .overlay { if landing { SideBar.hoverFill } }
-            } else {
-                landing ? Palette.hover : Palette.ground
+            Group {
+                if prefs.frostedSidebar {
+                    Frosted(blending: browser.pageUnder ? Under.blending : .behindWindow)
+                        .overlay { if landing { SideBar.hoverFill } }
+                } else {
+                    landing ? Palette.hover : Palette.ground
+                }
             }
+            .overlay { TintWash(prefs: prefs) }
         }
         .overlay(alignment: .trailing) {
             Rectangle().fill(Palette.hairline).frame(width: 1)

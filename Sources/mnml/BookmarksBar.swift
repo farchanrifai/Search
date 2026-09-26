@@ -34,11 +34,14 @@ struct BookmarksBar: View {
         // With the page running under the chrome (Under.swift), the bar is
         // chrome too: the page seen through it, as through the strip above.
         .background {
-            if browser.pageUnder {
-                TopGlass()
-            } else {
-                Palette.ground
+            Group {
+                if browser.pageUnder {
+                    TopGlass()
+                } else {
+                    Palette.ground
+                }
             }
+            .overlay { TintWash(prefs: browser.prefs) }
         }
         .overlay(alignment: .bottom) {
             Rectangle().fill(Palette.hairline).frame(height: 1)

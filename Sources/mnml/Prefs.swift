@@ -124,6 +124,19 @@ final class Preferences: ObservableObject {
     @Published var pageUnder: Bool {
         didSet { store.set(pageUnder, forKey: "tabs.under") }
     }
+    /// A colour washed over the column and the bar across the top, the
+    /// material still showing through, as in Arc (Tint). Hex; empty, none.
+    @Published var chromeTint: String {
+        didSet { store.set(chromeTint, forKey: "tabs.tint") }
+    }
+    /// The tint in dark mode: `Tint.same` follows the one above, "" is none.
+    @Published var chromeTintDark: String {
+        didSet { store.set(chromeTintDark, forKey: "tabs.tint.dark") }
+    }
+    /// How strongly the tint covers the material, 0–1.
+    @Published var chromeTintStrength: Double {
+        didSet { store.set(chromeTintStrength, forKey: "tabs.tint.strength") }
+    }
 
     /// The highlight glides from the tab left to the one chosen; off, it is
     /// simply there.
@@ -305,6 +318,9 @@ final class Preferences: ObservableObject {
         frostedSidebar = frosted
         SideBar.frosted = frosted
         pageUnder = store.bool(forKey: "tabs.under")
+        chromeTint = store.string(forKey: "tabs.tint") ?? ""
+        chromeTintDark = store.string(forKey: "tabs.tint.dark") ?? Tint.same
+        chromeTintStrength = store.object(forKey: "tabs.tint.strength") as? Double ?? Tint.strength
         shielded = store.object(forKey: "shield") as? Bool ?? true
         extensionsInPrivate = store.bool(forKey: "extensions.private")
         // Offered by default only in a build that can actually do them —

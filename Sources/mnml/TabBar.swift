@@ -175,14 +175,17 @@ struct TabBar: View {
         }
         // The Mac's sidebar material, as the column has it (Frosted).
         .background {
-            if browser.prefs.frostedSidebar {
-                Group {
-                    if browser.pageUnder { TopGlass() } else { Frosted(blending: .behindWindow) }
+            Group {
+                if browser.prefs.frostedSidebar {
+                    Group {
+                        if browser.pageUnder { TopGlass() } else { Frosted(blending: .behindWindow) }
+                    }
+                    .overlay { if landing { SideBar.hoverFill } }
+                } else {
+                    landing ? Palette.hover : Color.clear
                 }
-                .overlay { if landing { SideBar.hoverFill } }
-            } else {
-                landing ? Palette.hover : Color.clear
             }
+            .overlay { TintWash(prefs: browser.prefs) }
         }
         .animation(Motion.quick, value: landing)
         .animation(browser.prefs.slidesHighlight ? Motion.glide : nil, value: browser.activeID)

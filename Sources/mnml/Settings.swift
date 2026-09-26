@@ -332,6 +332,21 @@ struct SettingsPanel: View {
                 Switch(on: $prefs.frostedSidebar)
             }
             Rule()
+            Line("Tint", "A colour over the sidebar, or the bar across the top, with the material still showing through") {
+                TintPicker(hex: $prefs.chromeTint)
+            }
+            Rule()
+            Line("Tint in dark mode") {
+                TintPicker(hex: $prefs.chromeTintDark, offersSame: true)
+            }
+            Rule()
+            if !prefs.chromeTint.isEmpty || !["", Tint.same].contains(prefs.chromeTintDark) {
+                Line("Tint strength") {
+                    Slider(value: $prefs.chromeTintStrength, in: Tint.strengths)
+                        .frame(width: 160)
+                }
+                Rule()
+            }
             // Only where WebKit can keep the page clear of the chrome: before
             // macOS 26 the switch would do nothing.
             if Under.possible {
@@ -707,5 +722,59 @@ struct TabMemory: View {
                 }
             }
         }
+    }
+}
+
+/// The tint's swatches, none first, and the Mac's colour picker for any other.
+private struct TintPicker: View {
+    @Binding var hex: String
+    /// The dark mode's row: first, following the light tint.
+    var offersSame = false
+
+    var body: some View {
+        HStack(spacing: 7) {
+            if offersSame {
+                Button { hex = Tint.same } label: {
+                    Text("Same")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.horizontal, 7)
+                        .frame(height: 22)
+                        .overlay { Capsule().strokeBorder(hex == Tint.same ? Palette.ink : Palette.muted, lineWidth: hex == Tint.same ? 1.5 : 1) }
+                }
+                .buttonStyle(.plain)
+                .help("As in light mode")
+            }
+            ForEach(Tint.presets, id: \.self) { preset in
+                Button { hex = preset } label: { swatch(preset) }
+                    .buttonStyle(.plain)
+                    .help(preset.isEmpty ? "No tint" : "#\(preset)")
+            }
+            // A colour of your own; chosen, it is the one ringed.
+            ColorPicker("", selection: Binding(
+                get: { Tint.color(hex) ?? .gray },
+                set: { hex = Tint.hex($0) }
+            ), supportsOpacity: false)
+            .labelsHidden()
+            .overlay { if !hex.isEmpty && hex != Tint.same && !Tint.presets.contains(hex) { ring } }
+        }
+    }
+
+    private func swatch(_ preset: String) -> some View {
+        ZStack {
+            if let color = Tint.color(preset) {
+                Circle().fill(color)
+            } else {
+                Circle().strokeBorder(Palette.muted, lineWidth: 1)
+                Rectangle().fill(Palette.muted).frame(width: 1, height: 14).rotationEffect(.degrees(45))
+            }
+        }
+        .frame(width: 16, height: 16)
+        .padding(3)
+        .overlay { if hex == preset { ring } }
+    }
+
+    private var ring: some View {
+        Circle().strokeBorder(Palette.ink, lineWidth: 1.5)
     }
 }
